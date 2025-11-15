@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Enhanced Caesar Cipher — Web UI</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#7c3aed;--glass:rgba(255,255,255,0.04)}
+    *{box-sizing:border-box;font-family:Inter,Segoe UI,Roboto,system-ui,Arial}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#071020 0%, #0b1320 100%);color:#e6eef6;padding:28px;display:flex;align-items:center;justify-content:center}
+    .wrap{width:980px;max-width:96%;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px;padding:22px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+    header h1{font-size:20px;margin:0}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .card{background:var(--card);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    textarea,input[type="text"],input[type="number"]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:var(--glass);color:inherit;resize:vertical;min-height:90px}
+    .row{display:flex;gap:8px;align-items:center}
+    .controls{display:flex;gap:8px;margin-top:10px}
+    button{background:var(--accent);border:none;padding:10px 12px;border-radius:8px;color:white;cursor:pointer;font-weight:600}
+    button.alt{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+    .small{font-size:13px;padding:8px 10px}
+    .muted{color:var(--muted);font-size:13px}
+    .list{max-height:360px;overflow:auto;margin-top:10px;padding:8px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent)}
+    .dec-item{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.02);font-family:monospace}
+    .copy-btn{margin-left:8px;padding:6px 8px;background:transparent;border:1px solid rgba(255,255,255,0.04);border-radius:6px;color:var(--muted);cursor:pointer}
+    footer{margin-top:12px;color:var(--muted);font-size:13px}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-weight:800;color:white">C</div>
+      <div>
+        <h1>Enhanced Caesar Cipher — Web UI</h1>
+        <div class="muted">Type a message, choose a shift (1–25), Encrypt / Decrypt, or view all brute-force results.</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <label for="message">Message</label>
+        <textarea id="message" placeholder="Type or paste text here...">Hello, VS Code & Web!</textarea>
+
+        <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
+          <div style="flex:1">
+            <label for="shift">Shift (1–25)</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="shift" type="range" min="1" max="25" value="3" style="flex:1" />
+              <input id="shiftNum" type="number" min="1" max="25" value="3" style="width:72px" />
+            </div>
+          </div>
+
+          <div style="width:160px">
+            <label>&nbsp;</label>
+            <div class="row">
+              <button id="encrypt" class="small">Encrypt</button>
+              <button id="decrypt" class="small alt">Decrypt</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="showAll" class="small">Show All Decryptions</button>
+          <button id="clear" class="small alt">Clear</button>
+          <button id="copyOut" class="small alt">Copy Output</button>
+        </div>
+
+        <div style="margin-top:12px">
+          <label for="output">Output</label>
+          <textarea id="output" readonly placeholder="Result will appear here"></textarea>
+        </div>
+
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <label>All Possible Decryptions</label>
+            <div class="muted">Brute-force every shift and see results instantly.</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="copyAll" class="copy-btn">Copy All</button>
+            <button id="download" class="copy-btn">Download</button>
+          </div>
+        </div>
+
+        <div id="allList" class="list" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <footer>Tip: Use the "Show All Decryptions" button to brute-force an unknown key.</footer>
+  </div>
+
+  <script>
+    // Caesar functions
+    function caesarShift(text, shift){
+      const out = [];
+      for(let ch of text){
+        if(/[A-Za-z]/.test(ch)){
+          const base = (ch === ch.toUpperCase()) ? 65 : 97;
+          const code = (ch.charCodeAt(0) - base + shift) % 26;
+          const normalized = (code + 26) % 26; // handle negative
+          out.push(String.fromCharCode(normalized + base));
+        } else out.push(ch);
+      }
+      return out.join('');
+    }
+
+    // DOM
+    const message = document.getElementById('message');
+    const output = document.getElementById('output');
+    const shiftRange = document.getElementById('shift');
+    const shiftNum = document.getElementById('shiftNum');
+    const encryptBtn = document.getElementById('encrypt');
+    const decryptBtn = document.getElementById('decrypt');
+    const showAllBtn = document.getElementById('showAll');
+    const allList = document.getElementById('allList');
+    const clearBtn = document.getElementById('clear');
+    const copyOut = document.getElementById('copyOut');
+    const copyAll = document.getElementById('copyAll');
+    const downloadBtn = document.getElementById('download');
+
+    // sync range and number
+    shiftRange.addEventListener('input', () => { shiftNum.value = shiftRange.value; });
+    shiftNum.addEventListener('input', () => { let v = parseInt(shiftNum.value) || 1; if(v<1) v=1; if(v>25) v=25; shiftNum.value=v; shiftRange.value=v; });
+
+    encryptBtn.addEventListener('click', () => {
+      const s = parseInt(shiftRange.value,10);
+      const res = caesarShift(message.value, s);
+      output.value = res;
+    });
+
+    decryptBtn.addEventListener('click', () => {
+      const s = parseInt(shiftRange.value,10);
+      const res = caesarShift(message.value, -s);
+      output.value = res;
+    });
+
+    showAllBtn.addEventListener('click', () => {
+      const cipher = message.value;
+      allList.innerHTML = '';
+      for(let i=1;i<=25;i++){
+        const attempt = caesarShift(cipher, -i);
+        const item = document.createElement('div');
+        item.className = 'dec-item';
+        item.textContent = `Shift ${i.toString().padStart(2,' ')}: ${attempt}`;
+        allList.appendChild(item);
+      }
+    });
+
+    clearBtn.addEventListener('click', () => { message.value=''; output.value=''; allList.innerHTML=''; });
+
+    copyOut.addEventListener('click', async () => {
+      try{ await navigator.clipboard.writeText(output.value); alert('Output copied to clipboard'); }catch(e){ alert('Copy failed: ' + e); }
+    });
+
+    copyAll.addEventListener('click', async () => {
+      const text = Array.from(allList.children).map(n=>n.textContent).join('\n');
+      try{ await navigator.clipboard.writeText(text); alert('All decryptions copied'); }catch(e){ alert('Copy failed: ' + e); }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const text = Array.from(allList.children).map(n=>n.textContent).join('\n');
+      const blob = new Blob([text],{type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'caesar_decryptions.txt';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // quick demo populate
+    window.addEventListener('load', () => { showAllBtn.click(); });
+  </script>
+</body>
+</html>
